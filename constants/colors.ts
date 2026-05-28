@@ -1,0 +1,16 @@
+export const colors = {
+  background: '#0d0b1e',
+  cardBackground: 'rgba(255,255,255,0.06)',
+  cardBorder: 'rgba(255,255,255,0.12)',
+  primaryPurple: '#5b4fd4',
+  lightPurple: '#a78bfa',
+  textPrimary: '#f0ecff',
+  textMuted: 'rgba(255,255,255,0.4)',
+  streakCardBackground: 'rgba(255,255,255,0.09)',
+  streakCardBorder: 'rgba(255,255,255,0.18)',
+  tagBackground: 'rgba(167,139,250,0.15)',
+  tagColor: '#c4baff',
+  tabBarBackground: 'rgba(255,255,255,0.04)',
+  tabBarBorder: 'rgba(255,255,255,0.08)',
+  tabBarInactive: 'rgba(255,255,255,0.25)',
+};
