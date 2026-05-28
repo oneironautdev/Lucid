@@ -119,14 +119,39 @@ export async function requestNotifPermission(): Promise<boolean> {
   return status === 'granted';
 }
 
-export async function setupNotificationChannel() {
-  await Notifications.setNotificationChannelAsync('reality-checks', {
+export async function setupNotificationChannel(settings?: NotifSettings) {
+  const sound = settings?.notificationSound === 'custom' && settings?.notificationSoundFile
+    ? settings.notificationSoundFile
+    : 'default';
+
+  // Android caches channel settings (including sound) forever once created.
+  // The only way to change the sound is to delete the old channel and create
+  // a new one with a different ID. We encode a short hash of the sound path
+  // into the channel ID so any sound change automatically creates a fresh channel.
+  const soundKey = sound === 'default'
+    ? 'default'
+    : sound.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 24) ?? 'custom';
+  const channelId = `reality-checks-${soundKey}`;
+
+  // Delete any old reality-checks channels that use a different sound
+  try {
+    const existing = await Notifications.getNotificationChannelsAsync();
+    for (const ch of existing ?? []) {
+      if (ch.id.startsWith('reality-checks') && ch.id !== channelId) {
+        await Notifications.deleteNotificationChannelAsync(ch.id);
+      }
+    }
+  } catch {}
+
+  await Notifications.setNotificationChannelAsync(channelId, {
     name: 'Reality Checks',
     importance: Notifications.AndroidImportance.HIGH,
-    sound: 'ps2_startup',
+    sound,
     vibrationPattern: [0, 250, 150, 250],
     lightColor: '#a78bfa',
   });
+
+  return channelId;
 }
 
 export async function scheduleNotifications(settings: NotifSettings): Promise<void> {
@@ -137,6 +162,13 @@ export async function scheduleNotifications(settings: NotifSettings): Promise<vo
   const { timesPerDay, startMinutes, endMinutes } = settings;
   const windowMinutes = endMinutes - startMinutes;
   if (windowMinutes <= 0) return;
+
+  // Ensure the channel exists with the right sound and get its ID
+  const channelId = await setupNotificationChannel(settings);
+
+  const sound = settings.notificationSound === 'custom' && settings.notificationSoundFile
+    ? settings.notificationSoundFile
+    : 'default';
 
   const now = new Date();
   const startHour = Math.floor(startMinutes / 60);
@@ -164,12 +196,12 @@ export async function scheduleNotifications(settings: NotifSettings): Promise<vo
           title: msg.title,
           body: msg.body,
           data: { type: 'reality-check' },
-          sound: 'ps2_startup',
+          sound,
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: trigger,
-          channelId: 'reality-checks',
+          channelId,
         },
       });
     }

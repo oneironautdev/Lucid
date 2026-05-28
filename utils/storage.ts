@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export interface Dream {
   id: string;
@@ -9,6 +11,9 @@ export interface Dream {
   vividness: number;
   tags: string[];
   noMemory: boolean;
+  mood?: number;        // 1–5 self-reported mood at time of logging
+  wbtbNight?: boolean;  // was WBTB alarm used this night?
+  loggedAt?: string;    // ISO timestamp of when entry was saved (for quick-log correlation)
 }
 
 const KEY = 'lucid_dreams_v1';

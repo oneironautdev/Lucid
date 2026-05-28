@@ -357,7 +357,7 @@ function App() {
           <Checks fromNotification={fromNotification} onCheckDone={() => setFromNotification(false)} />
         </View>
         <View style={styles.screen}>
-          <Settings onDataDeleted={() => setDreams([])} />
+          <Settings onDataDeleted={() => setDreams([])} onDreamsChange={setDreams} />
         </View>
       </Animated.View>
       <TabBar activeTab={activeTab} onTabPress={switchTab} />

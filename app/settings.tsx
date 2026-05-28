@@ -25,7 +25,7 @@ import {
   scheduleNotifications, scheduleStreakReminders,
   setupNotificationChannel,
 } from '../utils/notifications';
-import { exportData, saveDreams } from '../utils/storage';
+import { Dream, exportData, loadDreams, saveDreams } from '../utils/storage';
 import { saveWBTBSettingsNative } from '../utils/wbtbBridge';
 
 // ─── PIN storage ──────────────────────────────────────────────────────────────
@@ -73,30 +73,83 @@ interface NumberPickerModalProps {
   onClose: () => void;
 }
 
+const DRUM_ITEM_H = 52;
+const DRUM_VISIBLE = 5; // odd so selected is centred
+
 function NumberPickerModal({ visible, initialValue, min, max, unit, onSave, onClose }: NumberPickerModalProps) {
   const [value, setValue] = useState(initialValue);
+  const scrollRef = useRef<ScrollView>(null);
+  const didLayoutRef = useRef(false);
+  const items = Array.from({ length: max - min + 1 }, (_, i) => min + i);
 
+  // Reset value and layout flag whenever the modal opens
   useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue, visible]);
+    if (visible) {
+      setValue(initialValue);
+      didLayoutRef.current = false;
+    }
+  }, [visible, initialValue]);
+
+  // Scroll to the right position once the ScrollView has laid out
+  const handleLayout = () => {
+    if (didLayoutRef.current) return;
+    didLayoutRef.current = true;
+    const idx = initialValue - min;
+    scrollRef.current?.scrollTo({ y: idx * DRUM_ITEM_H, animated: false });
+  };
+
+  const handleScroll = (e: any) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const snapped = Math.round(y / DRUM_ITEM_H);
+    const clamped = Math.max(0, Math.min(items.length - 1, snapped));
+    setValue(items[clamped]);
+  };
+
+  const windowH = DRUM_ITEM_H * DRUM_VISIBLE;
+  const padding = DRUM_ITEM_H * Math.floor(DRUM_VISIBLE / 2);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={npStyles.overlay}>
         <View style={npStyles.card}>
-          <Text style={npStyles.title}>Select value</Text>
-          <ScrollView style={npStyles.picker} showsVerticalScrollIndicator={false}>
-            {Array.from({ length: max - min + 1 }, (_, i) => min + i).map(n => (
-              <TouchableOpacity
-                key={n}
-                style={[npStyles.pickerItem, value === n && npStyles.pickerItemSelected]}
-                onPress={() => setValue(n)}
-              >
-                <Text style={[npStyles.pickerText, value === n && npStyles.pickerTextSelected]}>{n}</Text>
-                <Text style={[npStyles.pickerUnit, value === n && npStyles.pickerUnitSelected]}>{unit}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <Text style={npStyles.title}>
+            {value}<Text style={npStyles.titleUnit}> {unit}</Text>
+          </Text>
+
+          <View style={[npStyles.drumWrap, { height: windowH }]}>
+            {/* Selection highlight band */}
+            <View pointerEvents="none" style={[npStyles.selBand, { top: padding }]} />
+
+            <ScrollView
+              ref={scrollRef}
+              showsVerticalScrollIndicator={false}
+              snapToInterval={DRUM_ITEM_H}
+              decelerationRate="fast"
+              onLayout={handleLayout}
+              onMomentumScrollEnd={handleScroll}
+              onScrollEndDrag={handleScroll}
+              contentContainerStyle={{ paddingTop: padding, paddingBottom: padding }}
+            >
+              {items.map(n => {
+                const sel = n === value;
+                return (
+                  <TouchableOpacity
+                    key={n}
+                    style={npStyles.drumItem}
+                    onPress={() => {
+                      setValue(n);
+                      scrollRef.current?.scrollTo({ y: (n - min) * DRUM_ITEM_H, animated: true });
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={[npStyles.drumText, sel && npStyles.drumTextSel]}>{n}</Text>
+                    <Text style={[npStyles.drumUnit, sel && npStyles.drumUnitSel]}>{unit}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           <View style={npStyles.actions}>
             <TouchableOpacity style={npStyles.cancelBtn} onPress={onClose}>
               <Text style={npStyles.cancelText}>Cancel</Text>
@@ -121,17 +174,27 @@ const npStyles = StyleSheet.create({
     padding: 24, width: '100%', maxWidth: 280,
     borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.12)',
   },
-  title: { fontSize: 20, fontFamily: 'Nunito_800ExtraBold', color: colors.textPrimary, marginBottom: 16, textAlign: 'center' },
-  picker: { height: 200, marginBottom: 20 },
-  pickerItem: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 12, gap: 8,
+  title: {
+    fontSize: 36, fontFamily: 'Nunito_800ExtraBold',
+    color: colors.lightPurple, textAlign: 'center', marginBottom: 16,
   },
-  pickerItemSelected: { backgroundColor: 'rgba(167,139,250,0.15)', borderRadius: 10 },
-  pickerText: { fontSize: 24, fontFamily: 'Nunito_800ExtraBold', color: colors.textPrimary },
-  pickerTextSelected: { color: colors.lightPurple },
-  pickerUnit: { fontSize: 16, fontFamily: 'Nunito_600SemiBold', color: colors.textMuted },
-  pickerUnitSelected: { color: colors.lightPurple },
+  titleUnit: { fontSize: 18, fontFamily: 'Nunito_600SemiBold', color: colors.textMuted },
+  drumWrap: { overflow: 'hidden', marginBottom: 20, position: 'relative' },
+  selBand: {
+    position: 'absolute', left: 0, right: 0, height: DRUM_ITEM_H,
+    borderTopWidth: 0.5, borderBottomWidth: 0.5,
+    borderColor: 'rgba(167,139,250,0.4)',
+    backgroundColor: 'rgba(167,139,250,0.09)',
+    zIndex: 1,
+  },
+  drumItem: {
+    height: DRUM_ITEM_H, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center', gap: 6,
+  },
+  drumText: { fontSize: 26, fontFamily: 'Nunito_800ExtraBold', color: 'rgba(255,255,255,0.25)' },
+  drumTextSel: { color: colors.textPrimary },
+  drumUnit: { fontSize: 15, fontFamily: 'Nunito_600SemiBold', color: 'rgba(255,255,255,0.15)' },
+  drumUnitSel: { color: colors.textMuted },
   actions: { flexDirection: 'row', gap: 12 },
   cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
   cancelText: { fontSize: 15, fontFamily: 'Nunito_600SemiBold', color: colors.textMuted },
@@ -148,56 +211,136 @@ interface TimePickerModalProps {
 }
 
 function TimePickerModal({ visible, initialMinutes, onSave, onClose }: TimePickerModalProps) {
-  const initialHour = Math.floor(initialMinutes / 60);
-  const initialMin = initialMinutes % 60;
-  const initialIsPm = initialHour >= 12;
+  const toH12 = (h24: number) => (h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24);
 
-  const [hour, setHour] = useState(initialHour === 0 ? 12 : initialHour > 12 ? initialHour - 12 : initialHour);
-  const [minute, setMinute] = useState(initialMin);
-  const [isPm, setIsPm] = useState(initialIsPm);
+  const initH24   = Math.floor(initialMinutes / 60);
+  const initH12   = toH12(initH24);
+  const initMin   = initialMinutes % 60;
+  const initIsPm  = initH24 >= 12;
+
+  const [hour,   setHour]   = useState(initH12);
+  const [minute, setMinute] = useState(initMin);
+  const [isPm,   setIsPm]   = useState(initIsPm);
+
+  const hourRef   = useRef<ScrollView>(null);
+  const minRef    = useRef<ScrollView>(null);
+  const hourDidLayout = useRef(false);
+  const minDidLayout  = useRef(false);
+
+  useEffect(() => {
+    if (visible) {
+      setHour(initH12);
+      setMinute(initMin);
+      setIsPm(initIsPm);
+      hourDidLayout.current = false;
+      minDidLayout.current  = false;
+    }
+  }, [visible, initialMinutes]);
+
+  const ITEM_H   = 52;
+  const VISIBLE  = 5;
+  const padding  = ITEM_H * Math.floor(VISIBLE / 2);
+  const windowH  = ITEM_H * VISIBLE;
+
+  const handleHourScroll = (e: any) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+    const h = Math.max(1, Math.min(12, idx + 1));
+    setHour(h);
+  };
+  const handleMinScroll = (e: any) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+    const m = Math.max(0, Math.min(59, idx));
+    setMinute(m);
+  };
 
   const handleSave = () => {
     const h24 = isPm ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
-    const totalMinutes = h24 * 60 + minute;
-    onSave(totalMinutes);
+    onSave(h24 * 60 + minute);
   };
+
+  const preview = (() => {
+    const h24 = isPm ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
+    const hDisp = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+    const ampm  = h24 >= 12 ? 'PM' : 'AM';
+    return `${hDisp}:${minute.toString().padStart(2, '0')} ${ampm}`;
+  })();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={tpStyles.overlay}>
         <View style={tpStyles.card}>
-          <Text style={tpStyles.title}>Select time</Text>
+          <Text style={tpStyles.title}>{preview}</Text>
 
-          {/* Hour picker */}
-          <View style={tpStyles.pickerRow}>
-            <Text style={tpStyles.label}>Hour</Text>
-            <ScrollView style={tpStyles.picker} showsVerticalScrollIndicator={false}>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
-                <TouchableOpacity
-                  key={h}
-                  style={[tpStyles.pickerItem, hour === h && tpStyles.pickerItemSelected]}
-                  onPress={() => setHour(h)}
-                >
-                  <Text style={[tpStyles.pickerText, hour === h && tpStyles.pickerTextSelected]}>{h}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+          <View style={tpStyles.drumRow}>
+            {/* Hour drum */}
+            <View style={[tpStyles.drumWrap, { height: windowH }]}>
+              <View pointerEvents="none" style={[tpStyles.selBand, { top: padding }]} />
+              <ScrollView
+                ref={hourRef}
+                showsVerticalScrollIndicator={false}
+                snapToInterval={ITEM_H}
+                decelerationRate="fast"
+                onLayout={() => {
+                  if (hourDidLayout.current) return;
+                  hourDidLayout.current = true;
+                  hourRef.current?.scrollTo({ y: (initH12 - 1) * ITEM_H, animated: false });
+                }}
+                onMomentumScrollEnd={handleHourScroll}
+                onScrollEndDrag={handleHourScroll}
+                contentContainerStyle={{ paddingTop: padding, paddingBottom: padding }}
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                  <TouchableOpacity
+                    key={h}
+                    style={tpStyles.drumItem}
+                    onPress={() => {
+                      setHour(h);
+                      hourRef.current?.scrollTo({ y: (h - 1) * ITEM_H, animated: true });
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={[tpStyles.drumText, h === hour && tpStyles.drumTextSel]}>{h}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
 
-          {/* Minute picker */}
-          <View style={tpStyles.pickerRow}>
-            <Text style={tpStyles.label}>Minute</Text>
-            <ScrollView style={tpStyles.picker} showsVerticalScrollIndicator={false}>
-              {Array.from({ length: 60 }, (_, i) => i).map(m => (
-                <TouchableOpacity
-                  key={m}
-                  style={[tpStyles.pickerItem, minute === m && tpStyles.pickerItemSelected]}
-                  onPress={() => setMinute(m)}
-                >
-                  <Text style={[tpStyles.pickerText, minute === m && tpStyles.pickerTextSelected]}>{m.toString().padStart(2, '0')}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <Text style={tpStyles.colon}>:</Text>
+
+            {/* Minute drum */}
+            <View style={[tpStyles.drumWrap, { height: windowH }]}>
+              <View pointerEvents="none" style={[tpStyles.selBand, { top: padding }]} />
+              <ScrollView
+                ref={minRef}
+                showsVerticalScrollIndicator={false}
+                snapToInterval={ITEM_H}
+                decelerationRate="fast"
+                onLayout={() => {
+                  if (minDidLayout.current) return;
+                  minDidLayout.current = true;
+                  minRef.current?.scrollTo({ y: initMin * ITEM_H, animated: false });
+                }}
+                onMomentumScrollEnd={handleMinScroll}
+                onScrollEndDrag={handleMinScroll}
+                contentContainerStyle={{ paddingTop: padding, paddingBottom: padding }}
+              >
+                {Array.from({ length: 60 }, (_, i) => i).map(m => (
+                  <TouchableOpacity
+                    key={m}
+                    style={tpStyles.drumItem}
+                    onPress={() => {
+                      setMinute(m);
+                      minRef.current?.scrollTo({ y: m * ITEM_H, animated: true });
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={[tpStyles.drumText, m === minute && tpStyles.drumTextSel]}>
+                      {m.toString().padStart(2, '0')}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
 
           {/* AM/PM toggle */}
@@ -216,7 +359,6 @@ function TimePickerModal({ visible, initialMinutes, onSave, onClose }: TimePicke
             </TouchableOpacity>
           </View>
 
-          {/* Actions */}
           <View style={tpStyles.actions}>
             <TouchableOpacity style={tpStyles.cancelBtn} onPress={onClose}>
               <Text style={tpStyles.cancelText}>Cancel</Text>
@@ -241,14 +383,26 @@ const tpStyles = StyleSheet.create({
     padding: 24, width: '100%', maxWidth: 320,
     borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.12)',
   },
-  title: { fontSize: 20, fontFamily: 'Nunito_800ExtraBold', color: colors.textPrimary, marginBottom: 20, textAlign: 'center' },
-  pickerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
-  label: { fontSize: 14, fontFamily: 'Nunito_600SemiBold', color: colors.textMuted, width: 60 },
-  picker: { flex: 1, height: 120 },
-  pickerItem: { paddingVertical: 8, alignItems: 'center' },
-  pickerItemSelected: { backgroundColor: 'rgba(167,139,250,0.15)', borderRadius: 8 },
-  pickerText: { fontSize: 18, fontFamily: 'Nunito_600SemiBold', color: colors.textPrimary },
-  pickerTextSelected: { color: colors.lightPurple },
+  title: {
+    fontSize: 32, fontFamily: 'Nunito_800ExtraBold',
+    color: colors.lightPurple, textAlign: 'center', marginBottom: 16,
+  },
+  drumRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 20 },
+  drumWrap: { flex: 1, overflow: 'hidden', position: 'relative' },
+  selBand: {
+    position: 'absolute', left: 0, right: 0, height: 52,
+    borderTopWidth: 0.5, borderBottomWidth: 0.5,
+    borderColor: 'rgba(167,139,250,0.4)',
+    backgroundColor: 'rgba(167,139,250,0.09)',
+    zIndex: 1,
+  },
+  drumItem: { height: 52, alignItems: 'center', justifyContent: 'center' },
+  drumText: { fontSize: 26, fontFamily: 'Nunito_800ExtraBold', color: 'rgba(255,255,255,0.25)' },
+  drumTextSel: { color: colors.textPrimary },
+  colon: {
+    fontSize: 28, fontFamily: 'Nunito_800ExtraBold',
+    color: colors.textMuted, paddingBottom: 4,
+  },
   ampmRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
   ampmBtn: {
     flex: 1, paddingVertical: 12, borderRadius: 10,
@@ -572,7 +726,7 @@ function PinSetup({ initialSaved, onSaved, onRemoved }: PinSetupProps) {
 }
 
 // ─── Main Settings screen ─────────────────────────────────────────────────────
-export default function Settings({ onDataDeleted }: { onDataDeleted?: () => void }) {
+export default function Settings({ onDataDeleted, onDreamsChange }: { onDataDeleted?: () => void; onDreamsChange?: (dreams: Dream[]) => void }) {
   const [settings, setSettings] = useState<NotifSettings>(DEFAULT_NOTIF_SETTINGS);
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
@@ -582,6 +736,7 @@ export default function Settings({ onDataDeleted }: { onDataDeleted?: () => void
 
   const [pinEnabled, setPinEnabled] = useState(false);
   const [pinSaved, setPinSaved]     = useState(false);
+  const [pinLoaded, setPinLoaded]   = useState(false);
 
   const [timePickerVisible, setTimePickerVisible] = useState(false);
   const [timePickerField, setTimePickerField] = useState<'start' | 'end' | 'morning' | 'evening' | null>(null);
@@ -593,6 +748,7 @@ export default function Settings({ onDataDeleted }: { onDataDeleted?: () => void
     loadNotifSettings().then(setSettings);
     loadPin().then(p => {
       if (p) { setPinEnabled(true); setPinSaved(true); }
+      setPinLoaded(true);
     });
   }, []);
 
@@ -635,17 +791,39 @@ export default function Settings({ onDataDeleted }: { onDataDeleted?: () => void
     setNumberPickerField(null);
   };
 
+  // Copy a picked audio file into permanent app storage and return the local path.
+  // DocumentPicker's copyTo:'cachesDirectory' gives us a readable URI but it can
+  // be purged by the OS. We copy it to documentDirectory which persists forever.
+  const persistSoundFile = async (file: { uri: string; name: string }): Promise<string> => {
+    const dest = FileSystem.documentDirectory + 'sounds/' + file.name;
+    // Ensure the sounds directory exists
+    await FileSystem.makeDirectoryAsync(FileSystem.documentDirectory + 'sounds/', { intermediates: true });
+    // file.uri on Android after copyTo is the local cache copy — safe to copy from
+    await FileSystem.copyAsync({ from: file.uri, to: dest });
+    return dest;
+  };
+
   const handlePickAlarmSound = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: 'audio/*',
         copyTo: 'cachesDirectory',
       });
-      if (result.canceled) return;
+      if (result.canceled) {
+        // If they had no file yet, make sure we stay on default
+        if (!settings.wbtbAlarmSoundFile) {
+          update({ wbtbAlarmSound: 'default' });
+        }
+        return;
+      }
       const file = result.assets[0];
-      update({ wbtbAlarmSoundFile: file.uri });
+      const localPath = await persistSoundFile({ uri: file.uri, name: file.name });
+      update({ wbtbAlarmSoundFile: localPath, wbtbAlarmSound: 'custom' });
     } catch (error) {
       Alert.alert('Error', 'Failed to pick sound file');
+      if (!settings.wbtbAlarmSoundFile) {
+        update({ wbtbAlarmSound: 'default' });
+      }
     }
   };
 
@@ -657,7 +835,8 @@ export default function Settings({ onDataDeleted }: { onDataDeleted?: () => void
       });
       if (result.canceled) return;
       const file = result.assets[0];
-      update({ notificationSoundFile: file.uri });
+      const localPath = await persistSoundFile({ uri: file.uri, name: file.name });
+      update({ notificationSoundFile: localPath });
     } catch (error) {
       Alert.alert('Error', 'Failed to pick sound file');
     }
@@ -670,7 +849,7 @@ export default function Settings({ onDataDeleted }: { onDataDeleted?: () => void
     }
     setSaving(true);
     try {
-      await setupNotificationChannel();
+      await setupNotificationChannel(settings);
       await saveNotifSettings(settings);
       const granted = await requestNotifPermission();
       if (!granted) {
@@ -941,14 +1120,21 @@ export default function Settings({ onDataDeleted }: { onDataDeleted?: () => void
         <Text style={[styles.sectionLabel, { marginTop: 8 }]}>ALARM SOUND</Text>
         {(
           [
-            { value: 'custom',     label: 'Custom file',     sub: settings.wbtbAlarmSoundFile ? settings.wbtbAlarmSoundFile.split('/').pop() || 'Import from device storage' : 'Import from device storage' },
             { value: 'default',    label: 'Default alarm',   sub: 'Your device\'s default alarm sound' },
+            { value: 'custom',     label: 'Custom file',     sub: settings.wbtbAlarmSoundFile ? settings.wbtbAlarmSoundFile.split('/').pop() || 'Import from device storage' : 'Import from device storage' },
           ] as { value: 'custom' | 'default'; label: string; sub: string }[]
         ).map(option => (
           <TouchableOpacity
             key={option.value}
             style={[styles.soundOption, settings.wbtbAlarmSound === option.value && styles.soundOptionActive]}
-            onPress={() => update({ wbtbAlarmSound: option.value })}
+            onPress={async () => {
+              if (option.value === 'custom' && !settings.wbtbAlarmSoundFile) {
+                // Jump straight to file picker; only switch to custom if a file is actually chosen
+                await handlePickAlarmSound();
+              } else {
+                update({ wbtbAlarmSound: option.value });
+              }
+            }}
             activeOpacity={0.7}
           >
             <View style={styles.soundOptionDot}>
@@ -1017,7 +1203,7 @@ export default function Settings({ onDataDeleted }: { onDataDeleted?: () => void
           />
         </View>
 
-        {pinEnabled && (
+        {pinEnabled && pinLoaded && (
           <PinSetup
             initialSaved={pinSaved}
             onSaved={() => setPinSaved(true)}
@@ -1066,7 +1252,7 @@ export default function Settings({ onDataDeleted }: { onDataDeleted?: () => void
           onPress={async () => {
             try {
               const result = await DocumentPicker.getDocumentAsync({
-                type: 'application/json',
+                type: '*/*',
               });
               if (result.canceled) return;
               const file = result.assets[0];
@@ -1091,6 +1277,8 @@ export default function Settings({ onDataDeleted }: { onDataDeleted?: () => void
                 await saveNotifSettings(mergedSettings);
               }
 
+              const updatedDreams = await loadDreams();
+              onDreamsChange?.(updatedDreams);
               Alert.alert('Import successful', 'Your data has been imported.');
               await loadNotifSettings().then(setSettings);
             } catch (e) {
