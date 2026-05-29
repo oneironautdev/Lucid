@@ -22,8 +22,8 @@
         "monochromeImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0d0b1e"
       },
-      "edgeToEdgeEnabled": false,
-      "predictiveBackGestureEnabled": false,
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": true,
       "package": "com.yourname.lucid",
       "navigationBar": {
         "backgroundColor": "#00000000",

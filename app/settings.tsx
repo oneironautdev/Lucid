@@ -98,11 +98,11 @@ function NumberPickerModal({ visible, initialValue, min, max, unit, onSave, onCl
     scrollRef.current?.scrollTo({ y: idx * DRUM_ITEM_H, animated: false });
   };
 
-  const handleScroll = (e: any) => {
+  const handleScrollEnd = (e: any) => {
     const y = e.nativeEvent.contentOffset.y;
-    const snapped = Math.round(y / DRUM_ITEM_H);
-    const clamped = Math.max(0, Math.min(items.length - 1, snapped));
+    const clamped = Math.max(0, Math.min(items.length - 1, Math.round(y / DRUM_ITEM_H)));
     setValue(items[clamped]);
+    scrollRef.current?.scrollTo({ y: clamped * DRUM_ITEM_H, animated: true });
   };
 
   const windowH = DRUM_ITEM_H * DRUM_VISIBLE;
@@ -123,11 +123,9 @@ function NumberPickerModal({ visible, initialValue, min, max, unit, onSave, onCl
             <ScrollView
               ref={scrollRef}
               showsVerticalScrollIndicator={false}
-              snapToInterval={DRUM_ITEM_H}
-              decelerationRate="fast"
+              decelerationRate="normal"
               onLayout={handleLayout}
-              onMomentumScrollEnd={handleScroll}
-              onScrollEndDrag={handleScroll}
+              onMomentumScrollEnd={handleScrollEnd}
               contentContainerStyle={{ paddingTop: padding, paddingBottom: padding }}
             >
               {items.map(n => {
@@ -244,13 +242,15 @@ function TimePickerModal({ visible, initialMinutes, onSave, onClose }: TimePicke
 
   const handleHourScroll = (e: any) => {
     const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
-    const h = Math.max(1, Math.min(12, idx + 1));
-    setHour(h);
+    const clamped = Math.max(0, Math.min(11, idx));
+    setHour(clamped + 1);
+    hourRef.current?.scrollTo({ y: clamped * ITEM_H, animated: true });
   };
   const handleMinScroll = (e: any) => {
     const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
-    const m = Math.max(0, Math.min(59, idx));
-    setMinute(m);
+    const clamped = Math.max(0, Math.min(59, idx));
+    setMinute(clamped);
+    minRef.current?.scrollTo({ y: clamped * ITEM_H, animated: true });
   };
 
   const handleSave = () => {
@@ -278,15 +278,13 @@ function TimePickerModal({ visible, initialMinutes, onSave, onClose }: TimePicke
               <ScrollView
                 ref={hourRef}
                 showsVerticalScrollIndicator={false}
-                snapToInterval={ITEM_H}
-                decelerationRate="fast"
+                decelerationRate="normal"
                 onLayout={() => {
                   if (hourDidLayout.current) return;
                   hourDidLayout.current = true;
                   hourRef.current?.scrollTo({ y: (initH12 - 1) * ITEM_H, animated: false });
                 }}
                 onMomentumScrollEnd={handleHourScroll}
-                onScrollEndDrag={handleHourScroll}
                 contentContainerStyle={{ paddingTop: padding, paddingBottom: padding }}
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
@@ -313,15 +311,13 @@ function TimePickerModal({ visible, initialMinutes, onSave, onClose }: TimePicke
               <ScrollView
                 ref={minRef}
                 showsVerticalScrollIndicator={false}
-                snapToInterval={ITEM_H}
-                decelerationRate="fast"
+                decelerationRate="normal"
                 onLayout={() => {
                   if (minDidLayout.current) return;
                   minDidLayout.current = true;
                   minRef.current?.scrollTo({ y: initMin * ITEM_H, animated: false });
                 }}
                 onMomentumScrollEnd={handleMinScroll}
-                onScrollEndDrag={handleMinScroll}
                 contentContainerStyle={{ paddingTop: padding, paddingBottom: padding }}
               >
                 {Array.from({ length: 60 }, (_, i) => i).map(m => (
@@ -873,6 +869,9 @@ export default function Settings({ onDataDeleted, onDreamsChange }: { onDataDele
   const handleAlarmSave = async () => {
     setSaving(true);
     try {
+      // Persist to AsyncStorage so settings survive app restarts
+      await saveNotifSettings(settings);
+      // Push to native SharedPrefs so the widget reads the new values immediately
       await saveWBTBSettingsNative(
         settings.wbtbBufferMinutes,
         settings.wbtbSleepHours,
