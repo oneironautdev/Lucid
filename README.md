@@ -14,7 +14,7 @@ Get the latest APK from [Releases](link).
 ## Build from source
 1. Clone the repo
 2. npm install
-3. npx expo run:android
+3. npx expo run:android --variant release
 
 ## License
 MIT
