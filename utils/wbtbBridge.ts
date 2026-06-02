@@ -17,3 +17,21 @@ export async function saveWBTBSettingsNative(
     }
   }
 }
+
+export interface WBTBRecord {
+  armedAt: string;  // ISO UTC
+  alarmAt: string;  // ISO UTC
+  firedAt: string;  // ISO UTC
+}
+
+export async function getWBTBHistory(): Promise<WBTBRecord[]> {
+  if (Platform.OS === 'android' && WBTBSettings) {
+    try {
+      const json: string = await WBTBSettings.getHistory();
+      return JSON.parse(json) as WBTBRecord[];
+    } catch (e) {
+      console.warn('WBTBSettings.getHistory failed:', e);
+    }
+  }
+  return [];
+}

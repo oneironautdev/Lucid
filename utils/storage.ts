@@ -11,9 +11,10 @@ export interface Dream {
   vividness: number;
   tags: string[];
   noMemory: boolean;
-  mood?: number;        // 1–5 self-reported mood at time of logging
-  wbtbNight?: boolean;  // was WBTB alarm used this night?
-  loggedAt?: string;    // ISO timestamp of when entry was saved (for quick-log correlation)
+  mood?: number; // 1-5 mood at logging time
+  wbtbNight?: boolean; // WBTB alarm used this night?
+  loggedAt?: string; // ISO timestamp when saved
+  lucid?: boolean; // was this a lucid dream?
 }
 
 const KEY = 'lucid_dreams_v1';
@@ -22,7 +23,24 @@ export async function loadDreams(): Promise<Dream[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as Dream[];
+    const dreams = JSON.parse(raw) as Dream[];
+    // Migration: promote 'lucid' tag to boolean, strip 'vivid' tag
+    let migrated = false;
+    const result = dreams.map(d => {
+      const hasLucidTag = d.tags?.includes('lucid') && !d.lucid;
+      const hasVividTag = d.tags?.includes('vivid');
+      if (hasLucidTag || hasVividTag) {
+        migrated = true;
+        return {
+          ...d,
+          lucid: hasLucidTag ? true : d.lucid,
+          tags: d.tags.filter(t => t !== 'lucid' && t !== 'vivid'),
+        };
+      }
+      return d;
+    });
+    if (migrated) saveDreams(result);
+    return result;
   } catch {
     return [];
   }
@@ -69,12 +87,54 @@ function toISO(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// ─── Reality checks ───────────────────────────────────────────────────────────
+
+export interface RealityCheck {
+  id: string; // Date.now().toString()
+  timestamp: number; // ms since epoch
+  techniqueId: string; // e.g. 'hands', 'nose', 'text'
+  result: 'awake' | 'lucid_suspected';
+  presence: number; // 1-5
+}
+
+const RC_KEY = 'lucid_reality_checks_v1';
+
+export async function loadChecks(): Promise<RealityCheck[]> {
+  try {
+    const raw = await AsyncStorage.getItem(RC_KEY);
+    return raw ? (JSON.parse(raw) as RealityCheck[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveChecks(checks: RealityCheck[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(RC_KEY, JSON.stringify(checks));
+  } catch {}
+}
+
+// Returns checks grouped by ISO date ('YYYY-MM-DD')
+export function groupChecksByDay(checks: RealityCheck[]): Record<string, RealityCheck[]> {
+  const out: Record<string, RealityCheck[]> = {};
+  for (const c of checks) {
+    const d = new Date(c.timestamp);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (!out[iso]) out[iso] = [];
+    out[iso].push(c);
+  }
+  return out;
+}
+
 export async function exportData(): Promise<void> {
   try {
     // Load dreams
     const dreams = await loadDreams();
 
-    // Load notification settings (excluding alarm sound files)
+    // Load reality checks
+    const checks = await loadChecks();
+
+    // Load notification settings (excluding alarm sounds)
     const notifRaw = await AsyncStorage.getItem('lucid_notif_settings_v1');
     let notifSettings = {};
     if (notifRaw) {
@@ -92,21 +152,21 @@ export async function exportData(): Promise<void> {
         wbtbAlarmSound: parsed.wbtbAlarmSound,
         wbtbAlarmSoundLoop: parsed.wbtbAlarmSoundLoop,
         notificationSound: parsed.notificationSound,
-        // Exclude: wbtbAlarmSoundFile, notificationSoundFile
       };
     }
 
     // Create export object
-    const exportData = {
-      version: '1.0',
+    const exportObj = {
+      version: '1.1',
       exportDate: new Date().toISOString(),
       dreams,
+      realityChecks: checks,
       notificationSettings: notifSettings,
     };
 
     // Write to file
     const fileUri = FileSystem.documentDirectory + 'lucid_export.json';
-    await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(exportData, null, 2));
+    await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(exportObj, null, 2));
 
     // Share the file
     if (await Sharing.isAvailableAsync()) {

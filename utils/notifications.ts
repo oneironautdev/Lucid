@@ -16,25 +16,25 @@ export interface NotifSettings {
   wbtbAlarmSound: 'custom' | 'default';
   wbtbAlarmSoundFile: string;
   wbtbAlarmSoundLoop: boolean;
-  notificationSound: 'default' | 'custom';
-  notificationSoundFile: string;
+  wbtbAlarmDuration: number; // seconds, 15-45
+  notificationSound: 'default' | 'app';
 }
 
 export const DEFAULT_NOTIF_SETTINGS: NotifSettings = {
   enabled: true,
-  timesPerDay: 7,
-  startMinutes: 8 * 60,
-  endMinutes: 22 * 60,
+  timesPerDay: 10,
+  startMinutes: 6 * 60,
+  endMinutes: 21 * 60,
   streakReminderEnabled: true,
   streakReminderMinutes: 21 * 60,
-  streakReminderMorningMinutes: 8 * 60,
-  wbtbBufferMinutes: 20,
+  streakReminderMorningMinutes: 6 * 60,
+  wbtbBufferMinutes: 15,
   wbtbSleepHours: 5,
-  wbtbAlarmSound: 'custom',
+  wbtbAlarmSound: 'default',
   wbtbAlarmSoundFile: '',
   wbtbAlarmSoundLoop: false,
-  notificationSound: 'default',
-  notificationSoundFile: '',
+  wbtbAlarmDuration: 30,
+  notificationSound: 'app',
 };
 
 const SETTINGS_KEY = 'lucid_notif_settings_v1';
@@ -77,7 +77,7 @@ export const NOTIFICATION_MESSAGES: { title: string; body: string }[] = [
   { title: 'Are you sure?', body: 'Someone just walked past you. Do you know them?' },
   { title: 'Are you sure?', body: 'Where were you before this moment?' },
   { title: 'Are you sure?', body: 'Everything feels real. But it always does.' },
-  { title: 'Are you sure?', body: 'The last thing you remember — does it make sense?' },
+  { title: 'Are you sure?', body: 'The last thing you remember, does it make sense?' },
   { title: 'This moment.', body: 'Are you conscious of being conscious right now?' },
   { title: 'This moment.', body: 'What does reality feel like? Does this feel like that?' },
   { title: 'This moment.', body: 'How do you know you\'re not dreaming? Prove it.' },
@@ -87,7 +87,7 @@ export const NOTIFICATION_MESSAGES: { title: string; body: string }[] = [
   { title: 'This moment.', body: 'If this were a dream, what would give it away?' },
   { title: 'This moment.', body: 'Presence is the gateway. Are you present right now?' },
   { title: 'Hey.', body: 'Just checking in. Are you dreaming?' },
-  { title: 'Hey.', body: 'Quick one — look at your hands.' },
+  { title: 'Hey.', body: 'Quick one, look at your hands.' },
   { title: 'Hey.', body: 'Something feels slightly off. Or maybe not.' },
   { title: 'Hey.', body: 'Don\'t ignore this one. Actually do the check.' },
   { title: 'Hey.', body: 'This could be a dream. Humor the idea for a second.' },
@@ -120,20 +120,12 @@ export async function requestNotifPermission(): Promise<boolean> {
 }
 
 export async function setupNotificationChannel(settings?: NotifSettings) {
-  const sound = settings?.notificationSound === 'custom' && settings?.notificationSoundFile
-    ? settings.notificationSoundFile
-    : 'default';
+  // 'app' = bundled sound, 'default' = system sound
+  const useAppSound = settings?.notificationSound !== 'default';
+  const sound = useAppSound ? 'reality_check' : undefined;
+  const channelId = useAppSound ? 'reality-checks-app' : 'reality-checks-default';
 
-  // Android caches channel settings (including sound) forever once created.
-  // The only way to change the sound is to delete the old channel and create
-  // a new one with a different ID. We encode a short hash of the sound path
-  // into the channel ID so any sound change automatically creates a fresh channel.
-  const soundKey = sound === 'default'
-    ? 'default'
-    : sound.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 24) ?? 'custom';
-  const channelId = `reality-checks-${soundKey}`;
-
-  // Delete any old reality-checks channels that use a different sound
+  // Clean up old channels with different IDs
   try {
     const existing = await Notifications.getNotificationChannelsAsync();
     for (const ch of existing ?? []) {
@@ -163,12 +155,8 @@ export async function scheduleNotifications(settings: NotifSettings): Promise<vo
   const windowMinutes = endMinutes - startMinutes;
   if (windowMinutes <= 0) return;
 
-  // Ensure the channel exists with the right sound and get its ID
+  // Ensure channel exists with right sound
   const channelId = await setupNotificationChannel(settings);
-
-  const sound = settings.notificationSound === 'custom' && settings.notificationSoundFile
-    ? settings.notificationSoundFile
-    : 'default';
 
   const now = new Date();
   const startHour = Math.floor(startMinutes / 60);
@@ -196,7 +184,6 @@ export async function scheduleNotifications(settings: NotifSettings): Promise<vo
           title: msg.title,
           body: msg.body,
           data: { type: 'reality-check' },
-          sound,
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -222,15 +209,24 @@ export function getRandomStreakMessage() {
   return STREAK_MESSAGES[Math.floor(Math.random() * STREAK_MESSAGES.length)];
 }
 
-export async function scheduleStreakReminders(eveningHour = 21, morningHour = 8): Promise<void> {
-  await Notifications.setNotificationChannelAsync('streak-reminders', {
-    name: 'Streak Reminders',
+// morningMinutes and eveningMinutes are minutes-since-midnight (e.g. 6*60=360, 21*60=1260)
+export async function scheduleStreakReminders(morningMinutes = 8 * 60, eveningMinutes = 21 * 60, notificationSound: 'default' | 'app' = 'app'): Promise<void> {
+  const useAppSound = notificationSound !== 'default';
+
+  await Notifications.setNotificationChannelAsync('streak-reminders-morning', {
+    name: 'Morning Dream Reminders',
     importance: Notifications.AndroidImportance.DEFAULT,
-    sound: 'default',
+    sound: useAppSound ? 'morning_push' : undefined,
+  });
+
+  await Notifications.setNotificationChannelAsync('streak-reminders-evening', {
+    name: 'Evening Streak Reminders',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    sound: useAppSound ? 'evening_push' : undefined,
   });
 
   const MORNING_MESSAGES = [
-    { title: 'What did you dream?', body: 'Take 60 seconds now — dreams fade within minutes of waking.' },
+    { title: 'What did you dream?', body: 'Take 60 seconds now, dreams fade within minutes of waking.' },
     { title: 'Before it slips away.', body: 'Lie still and try to recall. Even one image is worth logging.' },
     { title: 'Dream recall window.', body: "The next 10 minutes are your best chance to remember last night's dreams." },
     { title: 'Good morning.', body: 'What was the last thing you experienced before waking up?' },
@@ -239,12 +235,17 @@ export async function scheduleStreakReminders(eveningHour = 21, morningHour = 8)
     { title: 'Log it now.', body: "Every dream you write down trains your memory for the next one." },
   ];
 
+  const morningHour = Math.floor(morningMinutes / 60);
+  const morningMin  = morningMinutes % 60;
+  const eveningHour = Math.floor(eveningMinutes / 60);
+  const eveningMin  = eveningMinutes % 60;
+
   const now = new Date();
 
   for (let day = 0; day < 7; day++) {
     const morning = new Date(now);
     morning.setDate(now.getDate() + day);
-    morning.setHours(morningHour, 0, 0, 0);
+    morning.setHours(morningHour, morningMin, 0, 0);
     if (morning > now) {
       const mMsg = MORNING_MESSAGES[Math.floor(Math.random() * MORNING_MESSAGES.length)];
       await Notifications.scheduleNotificationAsync({
@@ -256,14 +257,14 @@ export async function scheduleStreakReminders(eveningHour = 21, morningHour = 8)
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: morning,
-          channelId: 'streak-reminders',
+          channelId: 'streak-reminders-morning',
         },
       });
     }
 
     const evening = new Date(now);
     evening.setDate(now.getDate() + day);
-    evening.setHours(eveningHour, 0, 0, 0);
+    evening.setHours(eveningHour, eveningMin, 0, 0);
     if (evening > now) {
       const eMsg = STREAK_MESSAGES[Math.floor(Math.random() * STREAK_MESSAGES.length)];
       await Notifications.scheduleNotificationAsync({
@@ -275,9 +276,51 @@ export async function scheduleStreakReminders(eveningHour = 21, morningHour = 8)
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: evening,
-          channelId: 'streak-reminders',
+          channelId: 'streak-reminders-evening',
         },
       });
     }
   }
+}
+// ─── Update checker ───────────────────────────────────────────────────────────
+
+const UPDATE_CHECK_URL = 'https://raw.githubusercontent.com/oneironautdev/Lucid/main/version.json';
+const UPDATE_DISMISSED_KEY = 'lucid_update_dismissed_v1';
+const CURRENT_VERSION = '1.0.0';
+
+export interface UpdateInfo {
+  version: string;
+  changelog: string;
+  apkUrl: string;
+  playStore: boolean;
+  playStoreUrl: string;
+}
+
+/** Returns update info if a newer version is available and not yet dismissed, otherwise null. */
+export async function checkForUpdate(): Promise<UpdateInfo | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`${UPDATE_CHECK_URL}?t=${Date.now()}`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const data: UpdateInfo = await res.json();
+
+    if (!data.version || data.version === CURRENT_VERSION) return null;
+
+    // Don't show if user already dismissed this version
+    const dismissed = await AsyncStorage.getItem(UPDATE_DISMISSED_KEY);
+    if (dismissed === data.version) return null;
+
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/** Call when user dismisses the update banner for this version. */
+export async function dismissUpdate(version: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(UPDATE_DISMISSED_KEY, version);
+  } catch {}
 }

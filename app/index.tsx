@@ -1,17 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-    Animated,
-    Modal, Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Modal, Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { Circle, Path, Svg, Text as SvgText } from 'react-native-svg';
 import { colors } from '../constants/colors';
-import { Dream, calculateStreak, saveDreams } from '../utils/storage';
+import { calculateStreak, Dream, saveDreams } from '../utils/storage';
 
 function toLocalISO(d: Date): string {
   const y = d.getFullYear();
@@ -20,11 +20,14 @@ function toLocalISO(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+interface Insight { text: string; sub: string; }
+
 interface Props {
   onLogDream: () => void;
   onDreamPress: (dream: Dream) => void;
   dreams: Dream[];
   onDreamsChange: (dreams: Dream[]) => void;
+  topInsights?: Insight[];
 }
 
 function CloudSvg() {
@@ -65,7 +68,7 @@ function getStreakMessage(streak: number): string {
       'Close your eyes and begin',
       'Tonight could be the night',
       'Your dream journal awaits',
-      'Start small — even a feeling counts',
+      'Start small, even a feeling counts',
     ];
     return msgs[Math.floor(Date.now() / 86400000) % msgs.length];
   }
@@ -73,17 +76,17 @@ function getStreakMessage(streak: number): string {
     const msgs = [
       'Day one. The hardest step.',
       'You showed up. That matters.',
-      'One dream logged. Keep going.',
+      'First day in the books.',
       'The first thread of the tapestry.',
-      'A single dream remembered.',
+      'One day down.',
       'It starts with one.',
     ];
     return msgs[Math.floor(Date.now() / 86400000) % msgs.length];
   }
   if (streak === 2) {
     const msgs = [
-      'Two nights in a row',
-      'A pattern is forming',
+      'Two days in a row.',
+      'A pattern is forming.',
       'Back again. Good.',
       'Two down, the rest ahead.',
     ];
@@ -203,7 +206,7 @@ function getStreakMessage(streak: number): string {
   return msgs[streak % msgs.length];
 }
 
-// How cosmic should the number look (0 = plain, 1 = full portal)
+// Cosmic level for number (0 = plain, 1 = full portal)
 function cosmicLevel(streak: number): number {
   if (streak === 0) return 0;
   if (streak < 3)   return 0.08;
@@ -226,9 +229,9 @@ function CosmicStreakNumber({ streak }: CosmicNumberProps) {
   const fontSize = label.length === 1 ? 58 : label.length === 2 ? 50 : 40;
   const SIZE = label.length >= 3 ? 100 : 80;
 
-  // Two star layers: subtle background field + brighter foreground stars
+  // Two star layers: background + foreground
   const { bgStars, fgStars } = React.useMemo(() => {
-    // Background field — many tiny dim stars, always present from streak 1+
+    // Background field: many dim stars, always present
     const bgCount = Math.floor(20 + level * 40);
     const bgStars = Array.from({ length: bgCount }, (_, i) => {
       const seed = (i * 1111111 + streak * 99991) >>> 0;
@@ -240,7 +243,7 @@ function CosmicStreakNumber({ streak }: CosmicNumberProps) {
         color: STAR_COLORS_COSMIC[i % STAR_COLORS_COSMIC.length],
       };
     });
-    // Foreground stars — fewer, brighter, bigger, grow with streak
+    // Foreground stars: fewer, brighter, grow with streak
     const fgCount = Math.floor(4 + level * 18);
     const fgStars = Array.from({ length: fgCount }, (_, i) => {
       const seed = (i * 2654435761 + streak * 12345) >>> 0;
@@ -255,7 +258,7 @@ function CosmicStreakNumber({ streak }: CosmicNumberProps) {
     return { bgStars, fgStars };
   }, [streak, SIZE]);
 
-  // Pulse animation for glow
+  // Glow pulse animation
   const glowAnim = React.useRef(new Animated.Value(1)).current;
   React.useEffect(() => {
     if (level < 0.15) return;
@@ -271,25 +274,25 @@ function CosmicStreakNumber({ streak }: CosmicNumberProps) {
     ? `rgba(167,139,250,${(level * 0.75).toFixed(2)})`
     : `rgba(196,186,255,${(level * 0.75).toFixed(2)})`;
 
-  // Number colour: white at 0, shifts to vivid purple at max
-  // Purple = high R, low G, high B  (e.g. #a78bfa = 167,139,250)
+  // Number color: white at 0, purple at max
+  // Purple = high R, low G, high B (e.g. #a78bfa = 167,139,250)
   const r = Math.round(240 - level * 73);   // 240 → 167
   const g = Math.round(236 - level * 97);   // 236 → 139
   const b = 255;                             // always max
   const numColor = level === 0 ? '#f0ecff' : `rgb(${r},${g},${b})`;
 
-  // Nebula glow circle behind the digits
+  // Nebula glow behind digits
   const nebulaR  = SIZE * 0.42 + level * SIZE * 0.08;
   const nebulaOp = level * 0.6;
 
-  // Glow view needs a non-transparent bg for iOS shadow to render
+  // Glow needs non-transparent bg for iOS shadow
   const glowBg = level < 0.5
     ? `rgba(91,79,212,${(level * 0.35).toFixed(2)})`
     : `rgba(120,90,255,${(0.5 * 0.35).toFixed(2)})`;
 
   return (
     <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Outer iOS shadow glow — pulsing. Needs a real bg color to cast shadow */}
+      {/* iOS shadow glow */}
       {level > 0.1 && (
         <Animated.View
           pointerEvents="none"
@@ -309,7 +312,7 @@ function CosmicStreakNumber({ streak }: CosmicNumberProps) {
       )}
 
       <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-        {/* Soft nebula blob — centered on the number */}
+        {/* Soft nebula blob */}
         {level > 0.08 && (
           <Circle
             cx={SIZE / 2} cy={SIZE / 2}
@@ -325,17 +328,17 @@ function CosmicStreakNumber({ streak }: CosmicNumberProps) {
           />
         )}
 
-        {/* Background star field — subtle, dense */}
+        {/* Background star field */}
         {level > 0 && bgStars.map((s, i) => (
           <Circle key={`bg${i}`} cx={s.x} cy={s.y} r={s.r} fill={s.color} opacity={s.opacity} />
         ))}
 
-        {/* Foreground stars — brighter, fewer */}
+        {/* Foreground stars */}
         {fgStars.map((s, i) => (
           <Circle key={`fg${i}`} cx={s.x} cy={s.y} r={s.r} fill={s.color} opacity={s.opacity} />
         ))}
 
-        {/* The number — centered both axes, drawn last so always on top */}
+        {/* The number */}
         <SvgText
           x={SIZE / 2}
           y={SIZE / 2 + fontSize * 0.36}
@@ -352,13 +355,61 @@ function CosmicStreakNumber({ streak }: CosmicNumberProps) {
   );
 }
 
-export default function Index({ onLogDream, onDreamPress, dreams, onDreamsChange }: Props) {
+export default function Index({ onLogDream, onDreamPress, dreams, onDreamsChange, topInsights = [] }: Props) {
   const [noMemoryModal, setNoMemoryModal] = useState(false);
+  const [noMemorySubmitting, setNoMemorySubmitting] = useState(false);
 
   const recentDreams = dreams.filter(d => !d.noMemory).slice(0, 2);
   const streak = calculateStreak(dreams);
 
+  // ── Micro-moments ──────────────────────────────────────────────────────────
+  const recallDreams = dreams.filter(d => !d.noMemory);
+  const microMoments: { icon: string; text: string }[] = [];
+
+  const lucidCount = recallDreams.filter(d => d.lucid).length;
+  const totalTags = recallDreams.flatMap(d => d.tags);
+  const topTag = totalTags.length > 0
+    ? Object.entries(totalTags.reduce<Record<string, number>>((acc, t) => { acc[t] = (acc[t] || 0) + 1; return acc; }, {}))
+        .sort((a, b) => b[1] - a[1])[0]?.[0]
+    : null;
+  const avgVividness = recallDreams.length > 0
+    ? recallDreams.reduce((s, d) => s + (d.vividness ?? 0), 0) / recallDreams.length
+    : 0;
+
+  if (recallDreams.length === 1) {
+    microMoments.push({ icon: '✦', text: 'First dream saved' });
+  }
+  if (recallDreams.length === 5) {
+    microMoments.push({ icon: '◈', text: '5 dreams logged' });
+  }
+  if (recallDreams.length === 10) {
+    microMoments.push({ icon: '✦', text: '10 dreams logged' });
+  }
+  if (recallDreams.length >= 3) {
+    const maxViv = Math.max(...recallDreams.map(d => d.vividness ?? 0));
+    const mostVivid = recallDreams.find(d => (d.vividness ?? 0) === maxViv && maxViv > 0);
+    if (mostVivid) microMoments.push({ icon: '◈', text: `Most vivid: "${mostVivid.title}"` });
+  }
+  if (lucidCount === 1) {
+    microMoments.push({ icon: '✦', text: 'First lucid dream logged' });
+  } else if (lucidCount >= 2) {
+    microMoments.push({ icon: '✦', text: `${lucidCount} lucid dreams` });
+  }
+  if (topTag && recallDreams.length >= 5) {
+    microMoments.push({ icon: '⬡', text: `Top theme: ${topTag}` });
+  }
+  if (avgVividness >= 4 && recallDreams.length >= 5) {
+    microMoments.push({ icon: '◈', text: `Avg vividness: ${avgVividness.toFixed(1)}/5` });
+  }
+  if (streak === 2) microMoments.push({ icon: '⬡', text: '2-day streak' });
+  if (streak === 7) microMoments.push({ icon: '✦', text: 'One full week logged' });
+  if (streak === 14) microMoments.push({ icon: '✦', text: 'Two weeks straight' });
+  if (streak === 30) microMoments.push({ icon: '✦', text: '30 days' });
+
   const handleNoMemoryConfirm = async () => {
+    if (noMemorySubmitting) return;
+    setNoMemorySubmitting(true);
+    setNoMemoryModal(false);
     const today = new Date();
     const noMemoryEntry: Dream = {
       id: Date.now().toString(),
@@ -373,7 +424,7 @@ export default function Index({ onLogDream, onDreamPress, dreams, onDreamsChange
     const updated = [noMemoryEntry, ...dreams];
     onDreamsChange(updated);
     await saveDreams(updated);
-    setNoMemoryModal(false);
+    setNoMemorySubmitting(false);
   };
 
   const getGreeting = () => {
@@ -390,7 +441,7 @@ export default function Index({ onLogDream, onDreamPress, dreams, onDreamsChange
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
+          <Text style={styles.greeting}>{getGreeting()}, dreamer.</Text>
           <Text style={styles.date}>{getFormattedDate()}</Text>
         </View>
 
@@ -402,6 +453,25 @@ export default function Index({ onLogDream, onDreamPress, dreams, onDreamsChange
           </View>
         </View>
 
+        {microMoments.length > 0 && (
+          <View style={styles.microRow}>
+            {microMoments.slice(0, 3).map((m, i) => (
+              <View key={i} style={styles.microChip}>
+                <Text style={styles.microIcon}>{m.icon}</Text>
+                <Text style={styles.microText}>{m.text}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {topInsights.length > 0 && (
+          <View style={styles.insightPreviewCard}>
+            <Text style={styles.insightPreviewLabel}>INSIGHT</Text>
+            <Text style={styles.insightPreviewText}>{topInsights[0].text}</Text>
+            {topInsights[0].sub ? <Text style={styles.insightPreviewSub}>{topInsights[0].sub}</Text> : null}
+          </View>
+        )}
+
         <Text style={styles.sectionLabel}>RECENT DREAMS</Text>
 
         <View style={styles.dreamsContainer}>
@@ -409,11 +479,11 @@ export default function Index({ onLogDream, onDreamPress, dreams, onDreamsChange
             <Text style={styles.emptyText}>No dreams logged yet.</Text>
           ) : (
             recentDreams.map((dream) => (
-              <TouchableOpacity
+              <Pressable
                 key={dream.id}
-                style={styles.dreamCard}
+                style={({ pressed }) => [styles.dreamCard, pressed && { opacity: 0.75 }]}
                 onPress={() => onDreamPress(dream)}
-                activeOpacity={0.75}
+                android_ripple={null}
               >
                 <View style={styles.dreamHeader}>
                   <Text style={styles.dreamTitle}>{dream.title}</Text>
@@ -433,7 +503,7 @@ export default function Index({ onLogDream, onDreamPress, dreams, onDreamsChange
                     ))}
                   </View>
                 </View>
-              </TouchableOpacity>
+              </Pressable>
             ))
           )}
         </View>
@@ -463,16 +533,17 @@ export default function Index({ onLogDream, onDreamPress, dreams, onDreamsChange
             </View>
             <Text style={styles.modalTitle}>Are you sure?</Text>
             <Text style={styles.modalBody}>
-              Even a faint feeling, a color, or a single image counts. Try closing your eyes for a moment — anything come back?
+              Even a faint feeling or image counts. Try closing your eyes for a moment. Anything come back?
             </Text>
             <TouchableOpacity style={styles.modalPrimary} onPress={() => { setNoMemoryModal(false); onLogDream(); }}>
-              <Text style={styles.modalPrimaryText}>Actually, let me log it</Text>
+              <Text style={styles.modalPrimaryText}>Let me log it</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.modalGhost}
+              style={[styles.modalGhost, noMemorySubmitting && { opacity: 0.4 }]}
               onPress={handleNoMemoryConfirm}
+              disabled={noMemorySubmitting}
             >
-              <Text style={styles.modalGhostText}>No, I really don't remember</Text>
+              <Text style={styles.modalGhostText}>I really don't remember</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -532,6 +603,7 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end', paddingBottom: 32, paddingHorizontal: 16,
+    paddingTop: 60,
   },
   modalCard: {
     backgroundColor: '#1a1730', borderRadius: 24,
@@ -548,4 +620,23 @@ const styles = StyleSheet.create({
   modalPrimaryText: { fontSize: 15, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: colors.textPrimary },
   modalGhost:       { padding: 12, width: '100%', alignItems: 'center' },
   modalGhostText:   { fontSize: 14, fontFamily: 'Nunito_300Light', color: colors.textMuted },
+
+  microRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
+  microChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(167,139,250,0.09)',
+    borderWidth: 0.5, borderColor: 'rgba(167,139,250,0.22)',
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  microIcon: { fontSize: 11, color: colors.lightPurple },
+  microText: { fontSize: 12, fontFamily: 'Nunito_600SemiBold', color: colors.lightPurple },
+
+  insightPreviewCard: {
+    backgroundColor: 'rgba(167,139,250,0.07)',
+    borderWidth: 0.5, borderColor: 'rgba(167,139,250,0.18)',
+    borderRadius: 14, padding: 16, marginBottom: 24,
+  },
+  insightPreviewLabel: { fontSize: 10, fontFamily: 'Nunito_800ExtraBold', color: colors.lightPurple, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6, opacity: 0.7 },
+  insightPreviewText:  { fontSize: 15, fontFamily: 'Nunito_600SemiBold', color: colors.textPrimary, lineHeight: 22, marginBottom: 4 },
+  insightPreviewSub:   { fontSize: 12, fontFamily: 'Nunito_300Light', color: colors.textMuted, lineHeight: 18 },
 });
