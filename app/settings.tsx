@@ -928,7 +928,8 @@ export default function Settings({ onDataDeleted, onDreamsChange, onChecksChange
         settings.wbtbSleepHours,
         settings.wbtbAlarmSound,
         settings.wbtbAlarmSoundFile,
-        settings.wbtbAlarmSoundLoop
+        settings.wbtbAlarmSoundLoop,
+        settings.wbtbAlarmDuration ?? 30
       );
       const granted = await requestNotifPermission();
       if (!granted) {
@@ -958,13 +959,9 @@ export default function Settings({ onDataDeleted, onDreamsChange, onChecksChange
         settings.wbtbSleepHours,
         settings.wbtbAlarmSound,
         settings.wbtbAlarmSoundFile,
-        settings.wbtbAlarmSoundLoop
+        settings.wbtbAlarmSoundLoop,
+        settings.wbtbAlarmDuration ?? 30
       );
-      // Save duration separately (re-arms if currently armed)
-      const { WBTBSettings } = NativeModules;
-      if (WBTBSettings?.saveDuration) {
-        await WBTBSettings.saveDuration(settings.wbtbAlarmDuration ?? 45);
-      }
       setSaved(true);
     } catch {
       Alert.alert('Error', 'Failed to save alarm settings');
@@ -1647,10 +1644,10 @@ export default function Settings({ onDataDeleted, onDreamsChange, onChecksChange
 
             <Text style={styles.infoModalHeading}>Links</Text>
             {([
-              { icon: 'logo-github',         label: 'GitHub',         sub: 'Source code and releases',      url: '' },
-              { icon: 'globe-outline',        label: 'Website',        sub: 'Project homepage',              url: '' },
-              { icon: 'cafe-outline',         label: 'Buy Me a Coffee', sub: 'Support development',          url: '' },
-              { icon: 'mail-outline',         label: 'Contact',        sub: 'Get in touch',                  url: '' },
+              { icon: 'logo-github',         label: 'GitHub',         sub: 'Source code and releases',      url: 'https://github.com/oneironautdev/Lucid' },
+              { icon: 'globe-outline',        label: 'Website',        sub: 'Project homepage',              url: 'https://oneironautdev.github.io/Lucid/' },
+              { icon: 'cafe-outline',         label: 'Buy Me a Coffee', sub: 'Support development',          url: 'https://buymeacoffee.com/oneironautdev' },
+              { icon: 'mail-outline',         label: 'Contact',        sub: 'Get in touch',                  url: 'mailto:lucidapp.contact@gmail.com' },
             ] as { icon: string; label: string; sub: string; url: string }[]).map((link, i) => (
               <TouchableOpacity
                 key={i}

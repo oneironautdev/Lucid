@@ -7,11 +7,13 @@ export async function saveWBTBSettingsNative(
   sleepHours: number,
   alarmSound: string,
   alarmSoundFile: string,
-  alarmSoundLoop: boolean
+  alarmSoundLoop: boolean,
+  alarmDuration: number
 ): Promise<void> {
   if (Platform.OS === 'android' && WBTBSettings) {
     try {
       await WBTBSettings.save(bufferMinutes, sleepHours, alarmSound, alarmSoundFile, alarmSoundLoop);
+      await WBTBSettings.saveDuration(alarmDuration);
     } catch (e) {
       console.warn('WBTBSettings.save failed:', e);
     }

@@ -212,7 +212,7 @@ function LockScreen({ savedPin, onDone }: LockScreenProps) {
       <Animated.View style={{ opacity: logoOpacity, transform: [{ scale: logoScale }], alignItems: 'center' }}>
         <View style={lockStyles.iconWrap}>
           <Image
-            source={require('./assets/images/icon.png')}
+            source={require('./assets/Images/icon.png')}
             style={{ width: 120, height: 120 }}
             resizeMode="cover"
           />

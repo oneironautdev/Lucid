@@ -123,7 +123,7 @@ export async function setupNotificationChannel(settings?: NotifSettings) {
   // 'app' = bundled sound, 'default' = system sound
   const useAppSound = settings?.notificationSound !== 'default';
   const sound = useAppSound ? 'reality_check' : undefined;
-  const channelId = useAppSound ? 'reality-checks-app' : 'reality-checks-default';
+  const channelId = useAppSound ? 'reality-checks-app-2' : 'reality-checks-default';
 
   // Clean up old channels with different IDs
   try {

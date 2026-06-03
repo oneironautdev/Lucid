@@ -237,7 +237,7 @@ export default function Onboarding({ onDone }: OnboardingProps) {
   const scrollXAnim = useRef(new Animated.Value(0)).current; // drives star parallax
 
   // Welcome slide entrance
-  const logoScale   = useRef(new Animated.Value(0.8)).current;
+  const logoScale = useRef(new Animated.Value(0.92)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
   const textTranslY = useRef(new Animated.Value(12)).current;
@@ -254,7 +254,7 @@ export default function Onboarding({ onDone }: OnboardingProps) {
     Animated.sequence([
       Animated.delay(100),
       Animated.parallel([
-        Animated.spring(logoScale,   { toValue: 1, useNativeDriver: true, tension: 100, friction: 10 }),
+        Animated.spring(logoScale, { toValue: 1, useNativeDriver: true, tension: 60, friction: 14 }),
         Animated.timing(logoOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
       ]),
     ]).start();
@@ -337,7 +337,7 @@ export default function Onboarding({ onDone }: OnboardingProps) {
                 <Animated.View style={{ opacity: logoOpacity, transform: [{ scale: logoScale }], alignItems: 'center' }}>
                   <View style={styles.welcomeIconWrap}>
                     <Image
-                      source={require('../assets/images/icon.png')}
+                      source={require('../assets/Images/icon.png')}
                       style={styles.welcomeIcon}
                       resizeMode="cover"
                     />

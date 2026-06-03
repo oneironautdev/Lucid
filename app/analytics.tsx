@@ -715,7 +715,7 @@ function FactorRow({ label, sub, scoreA, scoreB, labelA, labelB }: {
 }) {
   const better = scoreA >= scoreB;
   const diff = Math.abs(scoreA - scoreB);
-  const diffColor = diff < 0.1 ? TEXT_MUTED : better ? PURPLE : AMBER;
+  const diffColor = diff < 0.05 ? TEXT_MUTED : better ? PURPLE : AMBER;
   const fmt = (n: number) => n % 1 === 0 ? `${n}` : n.toFixed(1);
   return (
     <View style={factorStyles.row}>

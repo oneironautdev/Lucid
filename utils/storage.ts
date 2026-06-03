@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { Alert } from 'react-native';
 
 export interface Dream {
   id: string;
@@ -45,10 +46,24 @@ export async function loadDreams(): Promise<Dream[]> {
     return [];
   }
 }
-export async function saveDreams(dreams: Dream[]): Promise<void> {
+export async function saveDreams(dreams: Dream[]): Promise<boolean> {
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(dreams));
-  } catch {}
+    return true;
+  } catch (e: any) {
+    const isStorageFull =
+      e?.message?.includes('storage') ||
+      e?.message?.includes('quota') ||
+      e?.code === 'E_STORAGE_FULL';
+    Alert.alert(
+      isStorageFull ? "Storage full" : "Couldn't save",
+      isStorageFull
+        ? "Your device is running low on storage. Free up some space and try again."
+        : "Your dream couldn't be saved. Please try again.",
+      [{ text: "OK" }]
+    );
+    return false;
+  }
 }
 
 export function countWords(text: string): number {
@@ -108,10 +123,24 @@ export async function loadChecks(): Promise<RealityCheck[]> {
   }
 }
 
-export async function saveChecks(checks: RealityCheck[]): Promise<void> {
+export async function saveChecks(checks: RealityCheck[]): Promise<boolean> {
   try {
     await AsyncStorage.setItem(RC_KEY, JSON.stringify(checks));
-  } catch {}
+    return true;
+  } catch (e: any) {
+    const isStorageFull =
+      e?.message?.includes('storage') ||
+      e?.message?.includes('quota') ||
+      e?.code === 'E_STORAGE_FULL';
+    Alert.alert(
+      isStorageFull ? "Storage full" : "Couldn't save",
+      isStorageFull
+        ? "Your device is running low on storage. Free up some space and try again."
+        : "Your reality check couldn't be saved. Please try again.",
+      [{ text: "OK" }]
+    );
+    return false;
+  }
 }
 
 // Returns checks grouped by ISO date ('YYYY-MM-DD')
