@@ -28,6 +28,23 @@ I built this because I wanted to log my own dreams. I hadn't even checked the Pl
 
 ## Screenshots
 
+<table>
+  <tr>
+    <td align="center"><b>Home</b></td>
+    <td align="center"><b>Journal</b></td>
+    <td align="center"><b>Analytics</b></td>
+    <td align="center"><b>Reality Check</b></td>
+    <td align="center"><b>Widget</b></td>
+  </tr>
+  <tr>
+    <td><img src="images/homepage.png" width="160"/></td>
+    <td><img src="images/journal.png" width="160"/></td>
+    <td><img src="images/analytics.png" width="160"/></td>
+    <td><img src="images/reality_checks.png" width="160"/></td>
+    <td><img src="images/widget.png" width="160"/></td>
+  </tr>
+</table>
+
 | Home | Journal | Analytics | Reality Check | Widget |
 |------|---------|-----------|---------------|--------|
 | ![Home](images/homepage.png) | ![Journal](images/journal.png) | ![Analytics](images/analytics.png) | ![Reality Check](images/reality_checks.png) | ![Widget](images/widget.png) |
