@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/wbtb_widget_bg"
+    android:clipToOutline="true"
+    android:padding="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tap ARM to start"
+            android:textColor="#C4B5FD"
+            android:textSize="11sp"
+            android:gravity="center"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/timer_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="5h 20m"
+            android:textColor="#FFFFFF"
+            android:textSize="28sp"
+            android:fontFamily="sans-serif-light"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:layout_marginBottom="10dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/btn_arm"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:text="ARM"
+                android:textColor="#C4B5FD"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"
+                android:fontFamily="sans-serif-medium"
+                android:background="@drawable/wbtb_btn_outline"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/btn_cancel"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:text="CANCEL"
+                android:textColor="#FCA5A5"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"
+                android:fontFamily="sans-serif-medium"
+                android:background="@drawable/wbtb_btn_outline_red"
+                android:gravity="center"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/btn_dismiss"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:text="DISMISS"
+                android:textColor="#6EE7B7"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"
+                android:fontFamily="sans-serif-medium"
+                android:background="@drawable/wbtb_btn_outline_green"
+                android:gravity="center"
+                android:visibility="gone" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+</FrameLayout>
