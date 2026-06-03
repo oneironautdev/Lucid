@@ -45,10 +45,6 @@ I built this because I wanted to log my own dreams. I hadn't even checked the Pl
   </tr>
 </table>
 
-| Home | Journal | Analytics | Reality Check | Widget |
-|------|---------|-----------|---------------|--------|
-| ![Home](images/homepage.png) | ![Journal](images/journal.png) | ![Analytics](images/analytics.png) | ![Reality Check](images/reality_checks.png) | ![Widget](images/widget.png) |
-
 ---
 
 ## Tech stack
