@@ -35,12 +35,18 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
-
 app-example
 
-# generated native folders
-/ios
-/android
+# Android - keep source, ignore build artifacts
+android/build/
+android/app/build/
+android/app/.cxx/
+android/.gradle/
+android/local.properties
 
+# iOS
+/ios
+
+# Expo inspect output
 inspect-output/
 inspect-output3/
