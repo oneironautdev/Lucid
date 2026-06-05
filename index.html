@@ -4817,56 +4817,69 @@
     }
 
     // Dot click
-    let suppressScroll = false;
-    let scrollEndTimer = null;
     dots.forEach(dot => {
       dot.addEventListener('click', () => {
         const idx = +dot.dataset.slide;
         setSlide(idx);
         const panel = panels[idx];
         if (!panel) return;
+
+        // Detach scroll listeners for the duration of the programmatic scroll
+        window.removeEventListener('scroll', desktopSlideFromScroll);
+        window.removeEventListener('scroll', mobileSlideFromScroll);
+
         if (window.innerWidth <= 768) {
           const phoneBottom = 68 + 12 + 340 + 16;
           const targetScrollY = panel.getBoundingClientRect().top + window.scrollY - phoneBottom;
-          suppressScroll = true;
-          clearTimeout(scrollEndTimer);
           window.scrollTo({ top: targetScrollY, behavior: 'smooth' });
         } else {
           const top = panel.getBoundingClientRect().top + window.scrollY - 120;
           window.scrollTo({ top, behavior: 'smooth' });
         }
-      });
-    });
 
-    // Detect scroll end — re-enable listener only once scrolling has fully stopped
-    window.addEventListener('scroll', () => {
-      if (!suppressScroll) return;
-      clearTimeout(scrollEndTimer);
-      scrollEndTimer = setTimeout(() => { suppressScroll = false; }, 150);
-    }, { passive: true });
-
-    // Intersection observer per panel — desktop only
-    const panelObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) entry.target.classList.add('in-view');
-        else entry.target.classList.remove('in-view');
-      });
-      let best = null, bestTop = Infinity;
-      panels.forEach(p => {
-        if (p.classList.contains('in-view')) {
-          const rect = p.getBoundingClientRect();
-          if (rect.top < bestTop) { bestTop = rect.top; best = p; }
+        // Re-attach once scroll position is stable
+        let lastY = window.scrollY;
+        let stableFrames = 0;
+        function waitForStop() {
+          const y = window.scrollY;
+          if (Math.abs(y - lastY) < 1) {
+            stableFrames++;
+            if (stableFrames >= 8) {
+              setSlide(idx);
+              setupShowcase();
+              return;
+            }
+          } else {
+            stableFrames = 0;
+          }
+          lastY = y;
+          requestAnimationFrame(waitForStop);
         }
+        requestAnimationFrame(waitForStop);
       });
-      if (best) setSlide(+best.dataset.slide);
-    }, {
-      threshold: [0, 0.25, 0.5],
-      rootMargin: '-25% 0px -25% 0px'
     });
 
-    // Mobile: drive image swap from scroll position relative to sticky phone bottom
+    // Panel fade-in observer — purely for the opacity/transform reveal, nothing else
+    const panelFadeObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        entry.target.classList.toggle('in-view', entry.isIntersecting);
+      });
+    }, { threshold: 0.05, rootMargin: '0px 0px -15% 0px' });
+    panels.forEach(p => panelFadeObserver.observe(p));
+
+    function desktopSlideFromScroll() {
+      const mid = window.innerHeight / 2;
+      let best = 0, bestDist = Infinity;
+      panels.forEach(p => {
+        const rect = p.getBoundingClientRect();
+        const center = rect.top + rect.height / 2;
+        const dist = Math.abs(center - mid);
+        if (dist < bestDist) { bestDist = dist; best = +p.dataset.slide; }
+      });
+      setSlide(best);
+    }
+
     function mobileSlideFromScroll() {
-      if (suppressScroll) return;
       const phoneBottom = 68 + 12 + 340 + 16;
       let active = 0;
       panels.forEach(p => {
@@ -4878,13 +4891,13 @@
 
     function setupShowcase() {
       if (window.innerWidth <= 768) {
-        panelObserver.disconnect();
+        window.removeEventListener('scroll', desktopSlideFromScroll);
         window.addEventListener('scroll', mobileSlideFromScroll, { passive: true });
         mobileSlideFromScroll();
       } else {
         window.removeEventListener('scroll', mobileSlideFromScroll);
-        panels.forEach(p => panelObserver.observe(p));
-        if (panels.length) panels[0].classList.add('in-view');
+        window.addEventListener('scroll', desktopSlideFromScroll, { passive: true });
+        desktopSlideFromScroll();
       }
     }
 
