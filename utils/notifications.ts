@@ -286,7 +286,7 @@ export async function scheduleStreakReminders(morningMinutes = 8 * 60, eveningMi
 
 const UPDATE_CHECK_URL = 'https://raw.githubusercontent.com/oneironautdev/Lucid/main/version.json';
 const UPDATE_DISMISSED_KEY = 'lucid_update_dismissed_v1';
-const CURRENT_VERSION = '1.0.0';
+const CURRENT_VERSION = '1.1.0';
 
 export interface UpdateInfo {
   version: string;
@@ -294,6 +294,7 @@ export interface UpdateInfo {
   apkUrl: string;
   playStore: boolean;
   playStoreUrl: string;
+  note?: string; // optional important note shown in a confirmation before the user updates
 }
 
 /** Returns update info if a newer version is available and not yet dismissed, otherwise null. */
