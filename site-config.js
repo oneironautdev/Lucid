@@ -227,7 +227,7 @@ var SITE_CONFIG = {
       },
       {
         q: "Is my data private?",
-        a: "Everything is stored locally on your phone. There are no accounts, no servers, and no automatic sync. Nothing leaves your device unless you choose to use the export feature yourself.",
+        a: "Your dreams, journal entries, settings, and PIN are stored locally on your phone, there are no accounts and no automatic sync. Lucid can send a small amount of anonymous usage data (like whether you logged a dream today) to help me understand how the app is used and improve it, this never includes dream content or anything that could identify you. It's on by default and you can turn it off anytime in Settings → Privacy, or during the intro.",
       },
       {
         q: "Why do my notifications stop after a week?",
@@ -251,7 +251,7 @@ var SITE_CONFIG = {
       },
       {
         q: "Does it work without internet?",
-        a: "Yes. The only network request the app makes is a version check on startup to see if there is an update available. Everything else runs entirely on your device.",
+        a: "Yes, the app works fully offline. When connected, it makes a couple of optional network calls, a version check on startup, and anonymous usage stats if that's enabled (Settings → Privacy), but nothing else needs the internet and the app works fine without it.",
       },
       {
         q: "What does the WBTB widget track?",
