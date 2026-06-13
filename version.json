@@ -1,7 +1,8 @@
 {
-  "version": "1.0.0",
-  "changelog": "Release",
-  "apkUrl": "",
+  "version": "1.1.0",
+  "changelog": "Added optional anonymous usage analytics (on by default, toggle in Settings → Privacy or onboarding).",
+  "note": "This is the first update since launch, so back up your data first (Settings, Export Data), just in case. This update also adds optional, anonymous usage analytics, on by default. You can turn it off anytime in Settings, Privacy.",
+  "apkUrl": "https://github.com/oneironautdev/Lucid/releases",
   "playStore": false,
   "playStoreUrl": ""
 }
