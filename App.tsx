@@ -2,7 +2,7 @@ import { Nunito_300Light, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold,
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, AppState, AppStateStatus, Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, AppState, AppStateStatus, Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Circle, Svg, Text as SvgText } from 'react-native-svg';
 
@@ -15,6 +15,7 @@ import Onboarding from './app/onboarding';
 import Settings, { loadPin } from './app/settings';
 import TabBar, { TabBarHandle } from './components/TabBar';
 import { colors } from './constants/colors';
+import { trackEvent, trackNewWbtbAlarms } from './utils/analytics';
 import { checkForUpdate, dismissUpdate, UpdateInfo } from './utils/notifications';
 import { Dream, loadChecks, loadDreams, RealityCheck } from './utils/storage';
 
@@ -316,6 +317,12 @@ function App() {
   useEffect(() => { loadDreams().then(setDreams); }, []);
   useEffect(() => { loadChecks().then(setChecks); }, []);
 
+  // Anonymous usage analytics (opt-out in Settings > Privacy)
+  useEffect(() => {
+    trackEvent('app_open');
+    trackNewWbtbAlarms();
+  }, []);
+
   // Check for updates on launch with delay to allow network to be ready
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -474,7 +481,19 @@ function App() {
                 style={styles.updateBannerBtn}
                 onPress={() => {
                   const url = updateInfo.playStore ? updateInfo.playStoreUrl : updateInfo.apkUrl;
-                  if (url) Linking.openURL(url);
+                  if (!url) return;
+                  if (updateInfo.note) {
+                    Alert.alert(
+                      'Before you update',
+                      updateInfo.note,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Continue', onPress: () => Linking.openURL(url) },
+                      ]
+                    );
+                  } else {
+                    Linking.openURL(url);
+                  }
                 }}
               >
                 <Text style={styles.updateBannerBtnText}>{updateInfo.playStore ? 'Open' : 'Download'}</Text>
