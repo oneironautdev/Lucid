@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Circle, Ellipse, Path, Svg } from 'react-native-svg';
 import { colors } from '../constants/colors';
+import { trackEvent } from '../utils/analytics';
 import { RealityCheck, saveChecks } from '../utils/storage';
 
 interface Technique {
@@ -303,6 +304,7 @@ export default function Checks({ fromNotification, onCheckDone, checks, onChecks
     const updated = [newCheck, ...checks];
     onChecksChange(updated);
     await saveChecks(updated);
+    trackEvent('reality_check_logged');
     setDone(true);
   };
 

@@ -1,23 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    SectionList,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  SectionList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { Circle, Path, Svg } from 'react-native-svg';
 import { colors } from '../constants/colors';
+import { trackEvent } from '../utils/analytics';
 import { countWords, Dream, saveDreams } from '../utils/storage';
 
 export type { Dream };
@@ -443,6 +444,8 @@ const Journal = React.forwardRef(function Journal(
       updated = dreams.map(d => (d.id === selected.id ? dream : d));
     } else {
       updated = [dream, ...dreams];
+      trackEvent('dream_logged');
+      if (dream.lucid) trackEvent('lucid_dream_logged');
     }
 
     onDreamsChange(updated);

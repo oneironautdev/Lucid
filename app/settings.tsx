@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Path, Svg } from 'react-native-svg';
 import { colors } from '../constants/colors';
+import { getAnalyticsEnabled, setAnalyticsEnabled } from '../utils/analytics';
 import { generateDebugData } from '../utils/debugData';
 import {
   DEFAULT_NOTIF_SETTINGS,
@@ -771,6 +772,7 @@ export default function Settings({ onDataDeleted, onDreamsChange, onChecksChange
   const [faqVisible, setFaqVisible] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
+  const [analyticsEnabled, setAnalyticsEnabledState] = useState(true);
   const [debugGenerating, setDebugGenerating] = useState(false);
   const [alarmPermGranted, setAlarmPermGranted] = useState<boolean | null>(null);
   const [exactAlarmGranted, setExactAlarmGranted] = useState<boolean | null>(null);
@@ -825,6 +827,7 @@ export default function Settings({ onDataDeleted, onDreamsChange, onChecksChange
 
   useEffect(() => {
     loadNotifSettings().then(setSettings);
+    getAnalyticsEnabled().then(setAnalyticsEnabledState);
     loadPin().then(p => {
       if (p) { setPinEnabled(true); setPinSaved(true); }
       setPinLoaded(true);
@@ -841,6 +844,11 @@ export default function Settings({ onDataDeleted, onDreamsChange, onChecksChange
   const update = (patch: Partial<NotifSettings>) => {
     setSaved(false);
     setSettings(prev => ({ ...prev, ...patch }));
+  };
+
+  const handleAnalyticsToggle = (val: boolean) => {
+    setAnalyticsEnabledState(val);
+    setAnalyticsEnabled(val);
   };
 
   const openTimePicker = (field: 'start' | 'end' | 'morning' | 'evening') => {
@@ -1381,6 +1389,22 @@ export default function Settings({ onDataDeleted, onDreamsChange, onChecksChange
           />
         )}
 
+        {/* ── Privacy ───────────────────────────────────────────── */}
+        <Text style={[styles.sectionLabel, { marginTop: 36 }]}>PRIVACY</Text>
+
+        <View style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>Share anonymous usage data</Text>
+            <Text style={styles.rowSub}>Helps me see how Lucid is used. No dream content or personal info, ever.</Text>
+          </View>
+          <Switch
+            value={analyticsEnabled}
+            onValueChange={handleAnalyticsToggle}
+            trackColor={{ false: 'rgba(255,255,255,0.1)', true: colors.primaryPurple }}
+            thumbColor={analyticsEnabled ? colors.lightPurple : 'rgba(255,255,255,0.4)'}
+          />
+        </View>
+
         {/* ── About / FAQ / Privacy ─────────────────────────────── */}
         <Text style={[styles.sectionLabel, { marginTop: 36 }]}>ABOUT</Text>
 
@@ -1579,6 +1603,8 @@ export default function Settings({ onDataDeleted, onDreamsChange, onChecksChange
             <Text style={styles.infoModalBody}>When you use Export Data, a JSON file is generated locally and shared only through your device's share sheet. Lucid never uploads anything automatically.</Text>
             <Text style={styles.infoModalHeading}>Notifications</Text>
             <Text style={styles.infoModalBody}>Reality check and streak reminder notifications are scheduled locally on your device. No notification content is sent to or stored on any server.</Text>
+            <Text style={styles.infoModalHeading}>Anonymous usage analytics</Text>
+            <Text style={styles.infoModalBody}>Lucid can send a small amount of anonymous usage data, like whether you logged a dream today or did a reality check, to help me understand how the app is used and improve it. This never includes dream content, journal text, tags, or anything that could identify you, just simple counts tied to a random ID generated on your device. It's on by default, but you can turn it off anytime from this screen (Settings → Privacy) or during the intro.</Text>
             <View style={{ height: 40 }} />
           </ScrollView>
         </View>
@@ -1611,7 +1637,7 @@ export default function Settings({ onDataDeleted, onDreamsChange, onChecksChange
               { q: 'What does vividness mean?', a: 'Vividness is a 1–5 self-rating of how clear, detailed, and sensory-rich a dream felt. A 1 is a hazy impression; a 5 is fully immersive. It\'s subjective, rate based on how the dream felt to you.' },
               { q: 'What happens if I miss a day?', a: 'Your streak resets to zero. That\'s okay, streaks are a motivational tool, not a measure of your progress as a dreamer. Your logged entries and insights remain intact. Just start again.' },
               { q: 'Why are some insights marked as correlations?', a: 'A correlation means two things tend to happen together in your data, for example, WBTB nights and higher vividness scores. It doesn\'t mean one causes the other. Lucid labels these clearly so you can draw your own conclusions.' },
-              { q: 'Does Lucid collect any data?', a: 'No. Lucid has no internet connection, no analytics, and no servers. Everything, your dreams, settings, and PIN, stays on your device. Nothing is collected, transmitted, or stored anywhere else.' },
+              { q: 'Does Lucid collect any data?', a: 'Your dreams, settings, and PIN never leave your device. Lucid can send a small amount of anonymous usage data (like whether you logged a dream today) to help me understand how the app is used and improve it, this never includes dream content or anything that could identify you. It\'s on by default and you can turn it off anytime in Settings → Privacy, or during the intro.' },
               { q: 'Why won\'t my settings stick after closing the app?', a: 'Settings are saved when you tap the Save button, changes you make to the sliders and toggles are held in memory until then. If the app is closed before saving, unsaved changes are lost. Make sure to tap Save before leaving the Settings screen.' },
             ] as { q: string; a: string }[]).map((item, i) => (
               <View key={i} style={styles.faqItem}>
@@ -1680,6 +1706,16 @@ export default function Settings({ onDataDeleted, onDreamsChange, onChecksChange
           </View>
           <ScrollView contentContainerStyle={styles.infoModalContent} showsVerticalScrollIndicator={false}>
             {([
+              {
+                version: '1.1.0',
+                label: 'Added optional anonymous usage analytics to help me understand how Lucid is used and make it better.',
+                date: 'June 2026',
+                patches: [
+                  "On by default, but easy to turn off in Settings → Privacy or during the intro",
+                  "Only simple anonymous counts are sent, never your dream content or anything that could identify you",
+                  "Updated the Privacy section and FAQ to explain exactly what's collected",
+                ],
+              },
               {
                 version: '1.0.0',
                 label: 'The first public release. Dream journal, reality checks, WBTB widget, analytics, and everything in between.',

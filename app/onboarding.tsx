@@ -7,6 +7,7 @@ import {
   NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -20,6 +21,7 @@ import Reanimated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, Line, Path, Rect, Svg } from 'react-native-svg';
 import { colors } from '../constants/colors';
+import { getAnalyticsEnabled, setAnalyticsEnabled } from '../utils/analytics';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -164,10 +166,31 @@ function LockIcon() {
   );
 }
 
+function SignalIcon() {
+  return (
+    <Svg width={80} height={80} viewBox="0 0 80 80" fill="none">
+      <Circle cx={40} cy={40} r={30} fill="rgba(167,139,250,0.07)" />
+      <Circle cx={40} cy={52} r={4} fill="rgba(167,139,250,0.45)" stroke="rgba(167,139,250,0.7)" strokeWidth={1} />
+      <Path d="M28 44 a17 17 0 0 1 24 0" stroke="rgba(167,139,250,0.45)" strokeWidth={2} strokeLinecap="round" fill="none" />
+      <Path d="M20 36 a28 28 0 0 1 40 0" stroke="rgba(167,139,250,0.22)" strokeWidth={2} strokeLinecap="round" fill="none" />
+      <Circle cx={58} cy={22} r={1.5} fill="#a78bfa" opacity={0.5} />
+      <Circle cx={20} cy={58} r={1.2} fill="#a78bfa" opacity={0.4} />
+      <Circle cx={62} cy={56} r={1} fill="#a78bfa" opacity={0.35} />
+    </Svg>
+  );
+}
+
 // ── Slide data ─────────────────────────────────────────────────────────────────
 
 // null icon = welcome slide
-const SLIDES = [
+interface Slide {
+  icon: React.ReactNode;
+  title: string | null;
+  body: string | null;
+  analyticsToggle?: boolean;
+}
+
+const SLIDES: Slide[] = [
   {
     icon: null,
     title: null,
@@ -189,9 +212,15 @@ const SLIDES = [
     body: "Your dream journal, logging streak, and daily reality checks all feed into the analytics tab.\n\nOver time it'll show you patterns, like which nights produce the clearest dreams and whether your habits are actually helping.",
   },
   {
+    icon: <SignalIcon />,
+    title: 'Help improve Lucid',
+    body: "Lucid can send a small amount of anonymous usage data, like whether you logged a dream today, to help me understand how the app is used and improve it.\n\nIt's just simple counts tied to a random ID. No dream content, journal text, or anything that could identify you, ever.",
+    analyticsToggle: true,
+  },
+  {
     icon: <LockIcon />,
     title: 'Your data stays here',
-    body: "Everything is stored on your device. No accounts, no cloud, no servers. Nothing leaves unless you export it yourself.\n\nIf you have questions, check the FAQ inside Settings.",
+    body: "Everything you write is stored on your device. No accounts, no cloud. Nothing leaves unless you export it yourself or choose to share anonymous usage data.\n\nIf you have questions, check the FAQ inside Settings.",
   },
 ];
 
@@ -232,6 +261,7 @@ interface OnboardingProps {
 export default function Onboarding({ onDone }: OnboardingProps) {
   const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(0);
+  const [analyticsEnabled, setAnalyticsEnabledState] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
   const scrollX = useSharedValue(0); // drives pills on UI thread
   const scrollXAnim = useRef(new Animated.Value(0)).current; // drives star parallax
@@ -274,6 +304,15 @@ export default function Onboarding({ onDone }: OnboardingProps) {
       ]),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    getAnalyticsEnabled().then(setAnalyticsEnabledState);
+  }, []);
+
+  const handleAnalyticsToggle = (val: boolean) => {
+    setAnalyticsEnabledState(val);
+    setAnalyticsEnabled(val);
+  };
 
   const exitAndDone = () => {
     Animated.parallel([
@@ -356,6 +395,17 @@ export default function Onboarding({ onDone }: OnboardingProps) {
                 </View>
                 <Text style={styles.title}>{slide.title}</Text>
                 <Text style={styles.body}>{slide.body}</Text>
+                {slide.analyticsToggle && (
+                  <View style={styles.toggleRow}>
+                    <Text style={styles.toggleLabel}>Share anonymous usage data</Text>
+                    <Switch
+                      value={analyticsEnabled}
+                      onValueChange={handleAnalyticsToggle}
+                      trackColor={{ false: 'rgba(255,255,255,0.1)', true: colors.primaryPurple }}
+                      thumbColor={analyticsEnabled ? colors.lightPurple : 'rgba(255,255,255,0.4)'}
+                    />
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -481,6 +531,26 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+    marginTop: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    backgroundColor: colors.cardBackground,
+    borderWidth: 0.5,
+    borderColor: colors.cardBorder,
+    width: '100%',
+  },
+  toggleLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.textPrimary,
   },
 
   // Bottom bar
